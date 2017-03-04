@@ -28,7 +28,10 @@ namespace KNRapp
          public void GPSstart()
         {         
             ge = new ApplicationGEClass();
-            ge.OpenKmlFile(plikGPS, 0);
+            if (ge != null)
+            {
+                ge.OpenKmlFile(plikGPS, 0);
+            }
         }
 
        public void GPSreset(Boolean czyWyswietlic)
@@ -39,7 +42,10 @@ namespace KNRapp
             File.WriteAllLines(plikGPS, emptyFile);
             if (czyWyswietlic)
             {
-                ge.OpenKmlFile(plikGPS, 0);
+                if (ge != null)
+                {
+                    ge.OpenKmlFile(plikGPS, 0);
+                }
             }
         }
 
@@ -50,7 +56,10 @@ namespace KNRapp
             GPSdata[n - 6] = X + "," + Y + ",50";
             GPSdata[n-17]=GPSdata[n-17]+ "\n\t"+ X + "," + Y + ",20";
             File.WriteAllLines(plikGPS,GPSdata);
-            ge.OpenKmlFile(plikGPS, 0);
+            if (ge != null)
+            {
+                ge.OpenKmlFile(plikGPS, 0);
+            }
         }
 
 
