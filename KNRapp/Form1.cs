@@ -43,7 +43,7 @@ namespace KNRapp
         byte[] inputBuffor = new byte[100];
         int znakiPolecenia;
         Boolean nowePolecenie = false;
-        byte[] polecenie = new byte[20];
+        byte[] polecenie = new byte[100];
         int licznik = 0;
 
         Int16 data1;
@@ -261,6 +261,10 @@ namespace KNRapp
                                 znakiPolecenia = 6;
                                 polecenie[0] = inputBuffor[i];
                                 break;
+                            case (byte)'G':
+                                znakiPolecenia = 48;
+                                polecenie[0] = inputBuffor[i];
+                                break;
                             default:
                                 break;
                         }
@@ -287,6 +291,8 @@ namespace KNRapp
             }
         }
 
+        //=============================================================================================================
+        //rozpoznaje polecenie odebrane przez serial port i podejmuje odpowiednią akcję 
         private void wykonajPolecenie()
         {
             switch (polecenie[0])
@@ -310,7 +316,7 @@ namespace KNRapp
                     this.lewyPrad();
                     break;
                 case (byte)'G':
-                    this.GPSset();
+                    this.GPSsett();
                     break;
                 case (byte)'b':
                     textBox1.Text = System.Text.Encoding.UTF8.GetString(polecenie);
@@ -319,6 +325,7 @@ namespace KNRapp
 
         }
 
+        //=============================================================================================================
         private void lewyPrad()
         {
             this.lowHighToInt16();
@@ -331,6 +338,7 @@ namespace KNRapp
             pradL3.Text = prad3.ToString();
         }
 
+        //=============================================================================================================
         private void prawyPrad()
         {
             this.lowHighToInt16();
@@ -343,6 +351,7 @@ namespace KNRapp
             pradP3.Text = prad3.ToString();
         }
 
+        //=============================================================================================================
         private void lewyPredkosc()
         {
             this.lowHighToInt16();
@@ -352,6 +361,7 @@ namespace KNRapp
             //this.dataToFile(data1);
         }
 
+        //=============================================================================================================
         private void prawyPredkosc()
         {
             this.lowHighToInt16();
@@ -362,6 +372,7 @@ namespace KNRapp
 
         }
 
+        //=============================================================================================================
         private void lowHighToInt16()
         {
             data1 = (Int16)(polecenie[1] | polecenie[2] << 8);
@@ -369,6 +380,7 @@ namespace KNRapp
             data3 = (Int16)(polecenie[5] | polecenie[6] << 8);
         }
 
+        //=============================================================================================================
         private void stopStatus()
         {
             if (polecenie[1] == 0)
@@ -381,6 +393,7 @@ namespace KNRapp
             }
         }
 
+        //=============================================================================================================
         private void ustawBateria()
         {
             double batteryPomiar = (polecenie[1] | polecenie[2] << 8) / 206.86;
@@ -394,14 +407,92 @@ namespace KNRapp
             }
         }
 
-        byte[] X = null;
-        byte[] Y = null;
+        byte[] X = new byte[10];
+        byte[] Y = new byte[11];
 
-        private void GPSset()
+        //=============================================================================================================
+        private void GPSsett()
         {
-            Array.Copy(polecenie, 1, X, 0, 7);
-            Array.Copy(polecenie, 1, Y, 0, 7);
-            gps.GPSset(enc8.GetString(X), enc8.GetString(Y));
+            Array.Copy(polecenie, 19, X, 1,9);
+            Array.Copy(polecenie, 31, Y, 1, 10);
+            if (polecenie[29] == 'S')
+            {
+                X[0] =(byte) '-';
+            }else
+            {
+                X[0] = (byte)' ';
+            }
+            if (polecenie[42] == 'W')
+            {
+                Y[0] = (byte)'-';
+            }
+            else
+            {
+                Y[0] = (byte)' ';
+            }
+
+            string Yconverted = enc8.GetString(GPSconvert(Y));
+            string Xconverted = enc8.GetString(GPSconvert(X));
+
+            textBox2.Text = Xconverted;
+            textBox3.Text = Yconverted;
+
+            gps.GPSset(Yconverted, Xconverted);
+        }
+
+
+        //konwersja danych GPS w formacie DDMM.MMMM na DD.DDDDDD
+        private byte[] GPSconvert(byte[] dane)
+        {
+            int i = 0;
+            for (i=0; i < dane.Length; i++)
+            {
+                if (dane[i] == '.')
+                {
+                    break;
+                }
+            }
+
+            double daneDouble = 0; //zmienna zawiera tylko część MM.MMMM czyli minuty 
+            daneDouble += (dane[i - 2] - '0') * 10;
+            daneDouble += (dane[i - 1] - '0') * 1;
+            daneDouble += (dane[i + 1] - '0') * 0.1;
+            daneDouble += (dane[i + 2] - '0') * 0.01;
+            daneDouble += (dane[i + 3] - '0') * 0.001;
+            daneDouble += (dane[i + 4] - '0') * 0.0001;
+
+            daneDouble = daneDouble / 60.0;
+            
+            byte[] wynik = Encoding.ASCII.GetBytes(daneDouble.ToString("0.000000"));  //wynik konwersji minut na stopnie
+
+            int k= 0;
+            for (k = 0; k < wynik.Length; k++)
+            {
+                if (wynik[k] == (byte)',')
+                {
+                    break;
+                }
+            }
+            int j = 0;
+            byte[] wynikKoncowy = new byte[30];
+            for ( j = 0; j <( i - 2); j++)
+            {
+                wynikKoncowy[j] = dane[j];
+            }
+
+            wynikKoncowy[i - 2] = (byte)'.';
+
+            for ( j = i -1; j < i+5; j++, k++)
+            {
+                wynikKoncowy[j] = wynik[k + 1];
+            }
+            Array.Resize(ref wynikKoncowy, j);
+
+            if (wynikKoncowy[0]==' ')
+            {
+                wynikKoncowy = wynikKoncowy.Skip(1).ToArray();
+            }
+            return wynikKoncowy;
         }
         //=======================================================================================================
         //#######################################################################################################
@@ -448,12 +539,11 @@ namespace KNRapp
             for (int i = 0; i < Sticks.Length; i++)
             {
                 stickHandle(Sticks[i], i);
-
-                if (serialPort1.IsOpen)
-                {
-                    this.serialRead();
-                    //stickHandle(Sticks[i], i);
-                }
+            }
+            if (serialPort1.IsOpen)
+            {
+                this.serialRead();
+                //stickHandle(Sticks[i], i);
             }
         }
         //========================================================================================================
@@ -477,32 +567,29 @@ namespace KNRapp
         {
             polecenieDoWyslania = 3;
         }
-
+        //========================================================================================================
         private void stopButton_Click(object sender, EventArgs e)
         {
             polecenieDoWyslania = 2;
         }
-
+        //========================================================================================================
         private void startButton_Click(object sender, EventArgs e)
         {
             polecenieDoWyslania = 1;
         }
 
-
+        //========================================================================================================
         private void mapaStart_Click(object sender, EventArgs e)
         {
-            button_mapaStart.Enabled = false;
             gps.GPSstart();
         }
-
+        //========================================================================================================
         private void ResetMap_Click(object sender, EventArgs e)
         {
             gps.GPSreset(true);
         }
 
-
-
-
+        //========================================================================================================
         private void dataToFile(int data)
         {
             if (polecenieDoWyslania == 4) { 

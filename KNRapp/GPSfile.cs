@@ -26,11 +26,16 @@ namespace KNRapp
         }
         
          public void GPSstart()
-        {         
-            ge = new ApplicationGEClass();
-            if (ge != null)
+        {
+            try
             {
-                ge.OpenKmlFile(plikGPS, 0);
+                ge = new ApplicationGEClass();
+                if (ge != null)
+                {
+                    ge.OpenKmlFile(plikGPS, 0);
+                }
+            }catch (Exception e)
+            {
             }
         }
 
@@ -53,7 +58,7 @@ namespace KNRapp
         {
             string[] GPSdata = File.ReadAllLines(plikGPS);
             int n =GPSdata.Length;
-            GPSdata[n - 6] = X + "," + Y + ",50";
+            GPSdata[n - 6] = X + "," + Y + ",20";
             GPSdata[n-17]=GPSdata[n-17]+ "\n\t"+ X + "," + Y + ",20";
             File.WriteAllLines(plikGPS,GPSdata);
             if (ge != null)
